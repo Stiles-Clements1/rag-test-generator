@@ -1,0 +1,12 @@
+﻿services:
+  - type: web
+    name: testmaker-rag
+    env: docker
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /api/health
+    envVars:
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: DEFAULT_NUM_QUESTIONS
+        value: "8"

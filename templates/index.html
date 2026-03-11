@@ -1,0 +1,528 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TestMaker RAG</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #14213d;
+      --paper: #fbf7ef;
+      --panel: #ffffff;
+      --line: #d3d9e2;
+      --accent: #005f73;
+      --accent-strong: #0a9396;
+      --warning: #ca6702;
+      --ok: #2a9d8f;
+      --bad: #b22222;
+      --shadow: 0 14px 36px rgba(20, 33, 61, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: "Space Grotesk", sans-serif;
+      background:
+        radial-gradient(circle at 20% 15%, #c8f7ef 0%, transparent 36%),
+        radial-gradient(circle at 92% 5%, #ffe3b3 0%, transparent 32%),
+        linear-gradient(165deg, #f4efe5 0%, #e8f0ff 100%);
+      padding: 24px;
+    }
+
+    .shell {
+      max-width: 980px;
+      margin: 0 auto;
+      display: grid;
+      gap: 20px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 20px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      letter-spacing: -0.03em;
+      font-size: clamp(1.8rem, 4vw, 2.5rem);
+    }
+
+    .subhead {
+      margin: 0;
+      color: #2b3f62;
+      font-size: 0.98rem;
+      line-height: 1.4;
+    }
+
+    .meta {
+      margin-top: 10px;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.82rem;
+      color: #40577c;
+    }
+
+    form {
+      display: grid;
+      gap: 14px;
+    }
+
+    label {
+      font-size: 0.92rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    input,
+    textarea,
+    button {
+      font: inherit;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #fff;
+    }
+
+    textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+
+    .grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 11px 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 120ms ease, filter 120ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.03);
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background: #102a43;
+      color: #fff;
+      width: fit-content;
+    }
+
+    .status {
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 0.92rem;
+      border: 1px solid transparent;
+      display: none;
+    }
+
+    .status.info {
+      display: block;
+      background: #eaf4ff;
+      border-color: #b8d6ff;
+      color: #1c4b8c;
+    }
+
+    .status.error {
+      display: block;
+      background: #fdecec;
+      border-color: #f5b8b8;
+      color: #7a1f1f;
+    }
+
+    .status.success {
+      display: block;
+      background: #e9f9f1;
+      border-color: #b6ebd1;
+      color: #206a52;
+    }
+
+    .question-card {
+      border: 1px solid #d8dee8;
+      border-left: 6px solid #1f6f8b;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 14px;
+      background: #fcfdff;
+    }
+
+    .question-title {
+      margin: 0 0 8px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    .option-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin: 8px 0;
+      font-size: 0.95rem;
+    }
+
+    .option-tag {
+      font-family: "IBM Plex Mono", monospace;
+      min-width: 16px;
+      font-weight: 600;
+      color: #0b4f68;
+    }
+
+    .score {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      border-radius: 999px;
+      padding: 8px 14px;
+      background: #f1f8ff;
+      border: 1px solid #c6def5;
+      font-weight: 700;
+    }
+
+    .result-row {
+      margin-top: 8px;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #d8dee8;
+      background: #fafbfd;
+    }
+
+    .result-row.correct {
+      border-color: #a5ddc2;
+      background: #edf9f3;
+    }
+
+    .result-row.incorrect {
+      border-color: #f2c2c2;
+      background: #fff3f3;
+    }
+
+    .muted {
+      color: #496286;
+      font-size: 0.9rem;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="panel">
+      <h1>TestMaker RAG</h1>
+      <p class="subhead">Generate course-specific practice tests from your Materials folder, take them, and get graded instantly.</p>
+      <div class="meta">Model: {{ model_name }} | Materials directory: {{ materials_dir }}</div>
+    </section>
+
+    <section class="panel">
+      <form id="generate-form">
+        <div>
+          <label for="api-key">OpenAI API Key</label>
+          <input id="api-key" name="api_key" type="password" placeholder="sk-..." autocomplete="off" />
+          <div class="muted">Leave blank if the server already has OPENAI_API_KEY set.</div>
+        </div>
+
+        <div>
+          <label for="prompt">Test Request</label>
+          <textarea id="prompt" name="prompt" required placeholder="Generate me a test based on chapter 1 with PCA coding concepts."></textarea>
+        </div>
+
+        <div class="grid">
+          <div>
+            <label for="num-questions">Number of Questions (3-30)</label>
+            <input id="num-questions" name="num_questions" type="number" min="3" max="30" value="{{ default_questions }}" required />
+          </div>
+        </div>
+
+        <div>
+          <button id="generate-btn" class="btn-primary" type="submit">Generate Practice Test</button>
+        </div>
+      </form>
+      <div id="status" class="status"></div>
+    </section>
+
+    <section id="test-panel" class="panel hidden">
+      <h2 id="test-title">Practice Test</h2>
+      <p id="test-instructions" class="muted"></p>
+      <form id="test-form">
+        <div id="questions"></div>
+        <button id="grade-btn" class="btn-secondary" type="submit">Grade My Test</button>
+      </form>
+    </section>
+
+    <section id="results-panel" class="panel hidden">
+      <h2>Results</h2>
+      <div id="score" class="score"></div>
+      <div id="result-list"></div>
+    </section>
+  </div>
+
+  <script>
+    const state = {
+      testId: null,
+      publicTest: null,
+    };
+
+    const generateForm = document.getElementById("generate-form");
+    const testForm = document.getElementById("test-form");
+    const statusEl = document.getElementById("status");
+    const generateBtn = document.getElementById("generate-btn");
+    const gradeBtn = document.getElementById("grade-btn");
+
+    const testPanel = document.getElementById("test-panel");
+    const resultsPanel = document.getElementById("results-panel");
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function showStatus(message, type) {
+      statusEl.textContent = message;
+      statusEl.className = `status ${type}`;
+    }
+
+    function clearStatus() {
+      statusEl.textContent = "";
+      statusEl.className = "status";
+    }
+
+    function normalizeQuestionId(question) {
+      return String(question.id);
+    }
+
+    function renderTest(test) {
+      document.getElementById("test-title").textContent = test.title || "Practice Test";
+      document.getElementById("test-instructions").textContent = test.instructions || "";
+
+      const questionsRoot = document.getElementById("questions");
+      questionsRoot.innerHTML = "";
+
+      test.questions.forEach((question, index) => {
+        const questionId = normalizeQuestionId(question);
+        const wrapper = document.createElement("article");
+        wrapper.className = "question-card";
+
+        const heading = document.createElement("p");
+        heading.className = "question-title";
+        heading.innerHTML = `${index + 1}. ${escapeHtml(question.prompt)} <span class="muted">(${question.points} pt)</span>`;
+        wrapper.appendChild(heading);
+
+        if (question.type === "multiple_choice") {
+          question.options.forEach((option, optionIndex) => {
+            const row = document.createElement("label");
+            row.className = "option-row";
+
+            const input = document.createElement("input");
+            input.type = "radio";
+            input.name = `q_${questionId}`;
+            input.value = option.label;
+            input.required = optionIndex === 0;
+
+            const tag = document.createElement("span");
+            tag.className = "option-tag";
+            tag.textContent = `${option.label}.`;
+
+            const optionText = document.createElement("span");
+            optionText.textContent = option.text;
+
+            row.appendChild(input);
+            row.appendChild(tag);
+            row.appendChild(optionText);
+            wrapper.appendChild(row);
+          });
+        } else {
+          const textarea = document.createElement("textarea");
+          textarea.name = `q_${questionId}`;
+          textarea.required = true;
+          textarea.placeholder = "Type your answer";
+          wrapper.appendChild(textarea);
+        }
+
+        questionsRoot.appendChild(wrapper);
+      });
+
+      testPanel.classList.remove("hidden");
+      resultsPanel.classList.add("hidden");
+      window.scrollTo({ top: testPanel.offsetTop - 10, behavior: "smooth" });
+    }
+
+    function renderResults(result) {
+      const scoreEl = document.getElementById("score");
+      scoreEl.textContent = `${result.score} / ${result.total_points} (${result.percentage}%)`;
+
+      const list = document.getElementById("result-list");
+      list.innerHTML = "";
+
+      result.results.forEach((item, index) => {
+        const row = document.createElement("div");
+        row.className = `result-row ${item.correct ? "correct" : "incorrect"}`;
+
+        const title = document.createElement("strong");
+        title.textContent = `Question ${index + 1}: ${item.earned_points}/${item.max_points}`;
+
+        const feedback = document.createElement("p");
+        feedback.className = "muted";
+        feedback.textContent = item.feedback;
+
+        const answer = document.createElement("p");
+        answer.className = "muted";
+        answer.textContent = `Expected answer: ${item.correct_answer}`;
+
+        row.appendChild(title);
+        row.appendChild(feedback);
+        row.appendChild(answer);
+
+        if (item.explanation) {
+          const explanation = document.createElement("p");
+          explanation.className = "muted";
+          explanation.textContent = `Explanation: ${item.explanation}`;
+          row.appendChild(explanation);
+        }
+
+        list.appendChild(row);
+      });
+
+      resultsPanel.classList.remove("hidden");
+      window.scrollTo({ top: resultsPanel.offsetTop - 10, behavior: "smooth" });
+    }
+
+    async function handleGenerateTest(event) {
+      event.preventDefault();
+      clearStatus();
+      generateBtn.disabled = true;
+
+      const prompt = document.getElementById("prompt").value.trim();
+      const apiKey = document.getElementById("api-key").value.trim();
+      const numQuestions = Number(document.getElementById("num-questions").value);
+
+      if (!prompt) {
+        showStatus("Please add a test request prompt.", "error");
+        generateBtn.disabled = false;
+        return;
+      }
+
+      try {
+        showStatus("Generating test from course context...", "info");
+
+        const response = await fetch("/api/generate-test", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prompt,
+            api_key: apiKey,
+            num_questions: numQuestions,
+          }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Unable to generate test.");
+        }
+
+        state.testId = data.test_id;
+        state.publicTest = data.test;
+        renderTest(data.test);
+        showStatus("Test generated. Complete the questions and submit for grading.", "success");
+      } catch (error) {
+        showStatus(error.message, "error");
+      } finally {
+        generateBtn.disabled = false;
+      }
+    }
+
+    async function handleGradeTest(event) {
+      event.preventDefault();
+      clearStatus();
+      gradeBtn.disabled = true;
+      const apiKey = document.getElementById("api-key").value.trim();
+
+      if (!state.testId || !state.publicTest) {
+        showStatus("Generate a test before grading.", "error");
+        gradeBtn.disabled = false;
+        return;
+      }
+
+      const responses = {};
+      state.publicTest.questions.forEach((question) => {
+        const questionId = normalizeQuestionId(question);
+        const fieldName = `q_${questionId}`;
+
+        if (question.type === "multiple_choice") {
+          const selected = testForm.querySelector(`input[name="${fieldName}"]:checked`);
+          responses[questionId] = selected ? selected.value : "";
+        } else {
+          const textInput = testForm.querySelector(`textarea[name="${fieldName}"]`);
+          responses[questionId] = textInput ? textInput.value.trim() : "";
+        }
+      });
+
+      try {
+        showStatus("Grading your test with rubric scoring...", "info");
+
+        const response = await fetch("/api/grade-test", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            test_id: state.testId,
+            api_key: apiKey,
+            responses,
+          }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Unable to grade test.");
+        }
+
+        renderResults(data);
+        showStatus("Grading complete.", "success");
+      } catch (error) {
+        showStatus(error.message, "error");
+      } finally {
+        gradeBtn.disabled = false;
+      }
+    }
+
+    generateForm.addEventListener("submit", handleGenerateTest);
+    testForm.addEventListener("submit", handleGradeTest);
+  </script>
+</body>
+</html>

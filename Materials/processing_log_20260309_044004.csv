@@ -1,0 +1,20 @@
+filename,status,chunks,pages,type,topic
+day_01_intro-unsupervised-learning_slides.pdf,SUCCESS,12,12,slides,Introduction
+day_03_kmeans-clustering_slides.pdf,SUCCESS,17,18,slides,K-means
+day_04_hierarchical-clustering_slides.pdf,SUCCESS,13,13,slides,Hierarchical
+day_05_cluster-model-selection_slides.pdf,SUCCESS,15,15,slides,Model Selection
+day_06_pca-part1_slides.pdf,SUCCESS,15,15,slides,PCA
+day_07_pca-part2_slides.pdf,SUCCESS,4,4,slides,PCA
+day_09_gaussian-mixture-models_slides.pdf,SUCCESS,9,10,slides,GMM
+day_10_dbscan-clustering_slides.pdf,SUCCESS,16,17,slides,DBSCAN
+day_11_outliers-isolation-forest_slides.pdf,SUCCESS,15,16,slides,Outliers
+day_13_association-rules_slides.pdf,SUCCESS,12,13,slides,Association Rules
+cluster-analysis-notes_part1_theory.pdf,SUCCESS,32,8,notes,Clustering
+cluster-analysis-notes_part2_methods.pdf,SUCCESS,41,9,notes,Clustering
+cluster-analysis-notes_choosing-k_theory.pdf,SUCCESS,14,4,notes,Clustering
+pca-notes_part1_foundations.pdf,SUCCESS,55,21,notes,PCA
+pca-notes_part2_applications.pdf,SUCCESS,37,10,notes,PCA
+pca-coefficients-explained_theory.pdf,SUCCESS,6,2,notes,PCA
+pca-two-variables-example_theory.pdf,SUCCESS,7,3,notes,PCA
+multidimensional-scaling-notes_theory.pdf,SUCCESS,20,17,notes,MDS
+high-dimensional-clustering-notes_theory.pdf,SUCCESS,19,7,notes,High-Dimensional Clustering
