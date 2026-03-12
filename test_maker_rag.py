@@ -1,10 +1,11 @@
-﻿import argparse
+import argparse
 import json
 import os
 import re
 from getpass import getpass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from sentence_transformers import CrossEncoder
 
 import pandas as pd
 from langchain_community.vectorstores import Chroma
@@ -29,6 +30,11 @@ def resolve_openai_api_key(
         )
     return key
 
+"""Helpers:
+    - infer document type using filename and extension
+    - infer lecture day, so user can ask questions about specific lectures
+    - infer topic
+"""
 
 def infer_document_type(file_name: str) -> str:
     name = file_name.lower()
@@ -40,17 +46,58 @@ def infer_document_type(file_name: str) -> str:
         return "slides"
     return "notes"
 
+def infer_lecture_day(file_name: str) -> str:
+    m = re.search(r"day_(\d+)", file_name.lower())
+    if m:
+        return f"day_{m.group(1).zfill(2)}"
+    return "general"
+
+
+def infer_topic(file_name: str) -> str:
+    base = file_name.lower()
+    for ext in [".pdf", ".r", ".xlsx", ".xls", ".csv"]:
+        base = base.replace(ext, "")
+    base = re.sub(r"day_\d+_", "", base)
+    base = base.replace("_slides", "").replace("_theory", "")
+    return base
+
+
+def parse_query_filters(query: str) -> Dict[str, str]:
+    query_lower = query.lower()
+    metadata_filter: Dict[str, str] = {}
+
+    if "r code" in query_lower or "coding test" in query_lower or "code" in query_lower or "script" in query_lower:
+        metadata_filter["document_type"] = "code"
+    elif "excel" in query_lower or "csv" in query_lower or "spreadsheet" in query_lower or "data file" in query_lower:
+        metadata_filter["document_type"] = "tabular_data"
+    elif "slides" in query_lower:
+        metadata_filter["document_type"] = "slides"
+    elif "notes" in query_lower:
+        metadata_filter["document_type"] = "notes"
+
+    day_match = re.search(r"(day|lecture)\s*(\d+)", query_lower)
+    if day_match:
+        day_num = int(day_match.group(2))
+        metadata_filter["lecture_day"] = f"day_{day_num:02d}"
+
+    return metadata_filter
+
 
 def _normalize_text(text: str) -> str:
     return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
+""" Store source, document type, lecture day, topic, file extension, sheet name,
+    chunk id and the number of total chunks.
+"""
 def _chunk_text(
     text: str,
     splitter: RecursiveCharacterTextSplitter,
     source: str,
     document_type: str,
     file_extension: str,
+    lecture_day: str,
+    topic: str,
     sheet_name: Optional[str] = None,
 ) -> List[Document]:
     chunks = splitter.split_text(_normalize_text(text))
@@ -62,6 +109,8 @@ def _chunk_text(
                 metadata={
                     "source": source,
                     "document_type": document_type,
+                    "lecture_day": lecture_day,
+                    "topic": topic,
                     "file_extension": file_extension,
                     "sheet_name": sheet_name,
                     "chunk_id": idx,
@@ -70,7 +119,6 @@ def _chunk_text(
             )
         )
     return docs
-
 
 def process_course_materials(
     directory_path: str, chunk_size: int = 1000, chunk_overlap: int = 150
@@ -101,6 +149,8 @@ def process_course_materials(
     for file_path in files:
         ext = file_path.suffix.lower()
         document_type = infer_document_type(file_path.name)
+        lecture_day = infer_lecture_day(file_path.name)
+        topic = infer_topic(file_path.name)
 
         try:
             if ext == ".pdf":
@@ -114,6 +164,8 @@ def process_course_materials(
                             source=file_path.name,
                             document_type=document_type,
                             file_extension=ext,
+                            lecture_day=lecture_day,
+                            topic=topic,
                         )
                     )
 
@@ -133,6 +185,8 @@ def process_course_materials(
                         source=file_path.name,
                         document_type=document_type,
                         file_extension=ext,
+                        lecture_day=lecture_day,
+                        topic=topic,
                     )
                 )
 
@@ -152,6 +206,8 @@ def process_course_materials(
                             source=file_path.name,
                             document_type=document_type,
                             file_extension=ext,
+                            lecture_day=lecture_day,
+                            topic=topic,
                             sheet_name=str(sheet_name),
                         )
                     )
@@ -170,6 +226,8 @@ def process_course_materials(
                         source=file_path.name,
                         document_type=document_type,
                         file_extension=ext,
+                        lecture_day=lecture_day,
+                        topic=topic,
                     )
                 )
 
@@ -527,6 +585,8 @@ class TestMakerRAG:
             api_key=self.api_key,
         )
 
+        self.reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+
         self.vectorstore = self._build_or_load_vectorstore(rebuild_index=rebuild_index)
         self.retriever = self.vectorstore.as_retriever(search_kwargs={"k": retrieval_k})
 
@@ -551,31 +611,69 @@ class TestMakerRAG:
             embedding_function=self.embeddings,
         )
 
+
     def _format_context(self, docs: List[Document]) -> str:
         formatted_docs = []
         for doc in docs:
             source = doc.metadata.get("source", "unknown")
             doc_type = doc.metadata.get("document_type", "unknown")
+            lecture_day = doc.metadata.get("lecture_day", "unknown")
             sheet_name = doc.metadata.get("sheet_name")
-            header = f"[Source: {source} | Type: {doc_type}"
+
+            header = f"[Source: {source} | Type: {doc_type} | Lecture: {lecture_day}"
             if sheet_name and str(sheet_name).lower() != "none":
                 header += f" | Sheet: {sheet_name}"
             header += "]"
+
             formatted_docs.append(f"{header}\n{doc.page_content}")
         return "\n\n".join(formatted_docs)
 
+    
+
+    def _rerank_documents(self, query: str, docs: List[Document], top_k: int = 4) -> List[Document]:
+        if not docs:
+            return docs
+
+        pairs = [[query, doc.page_content] for doc in docs]
+        scores = self.reranker.predict(pairs)
+
+        ranked = sorted(zip(scores, docs), key=lambda x: x[0], reverse=True)
+        return [doc for _, doc in ranked[:top_k]]
+
+
     def retrieve(self, query: str, k: Optional[int] = None) -> List[Document]:
         if k is None:
-            return self.retriever.invoke(query)
-        return self.vectorstore.similarity_search(query, k=k)
+            k = self.retrieval_k
+
+        metadata_filter = parse_query_filters(query)
+
+        if metadata_filter:
+            docs = self.vectorstore.similarity_search(query, k=max(k, 10), filter=metadata_filter)
+        else:
+            docs = self.vectorstore.similarity_search(query, k=max(k, 10))
+
+        docs = self._rerank_documents(query, docs, top_k=k)
+        return docs
 
     def answer_query(self, query: str) -> str:
         docs = self.retrieve(query)
         context = self._format_context(docs)
         prompt = f"""
-You are a university course assistant.
-Use only the context below. If the answer is not present, say:
+You are a test maker chatbot for a university course.
+Use ONLY the retrieved course materials below to answer the request.
+Do NOT use external knowledge.
+If the answer is not present, say:
 "I couldn't find that in the course materials."
+
+When generating answers or questions:
+Base them strictly on the context.
+
+If the user asks for practice questions, a quiz, or a mini test:
+Generate the requested number of questions.
+Include both multiple choice and open-ended questions when possible.
+
+If the user asks specifically for R code, answer only using code-related materials.
+If the user asks for a specific lecture or day, answer only using materials from that lecture/day.
 
 Context:
 {context}
@@ -620,6 +718,8 @@ Return only valid JSON with this schema:
 
 Rules:
 - Every question must be answerable from context.
+- If the request asks for R code or a coding test, generate questions only from code-related material.
+- If the request asks for a specific lecture/day, use only materials from that lecture/day.
 - For short_answer questions, include 3-6 grading keywords.
 - No markdown, no code fences, no additional text.
 
