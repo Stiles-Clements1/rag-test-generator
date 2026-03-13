@@ -90,7 +90,7 @@
       font: inherit;
     }
 
-    input,
+    input:not([type="radio"]),
     textarea {
       width: 100%;
       border: 1px solid var(--line);
@@ -186,16 +186,22 @@
     }
 
     .option-row {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
+      display: grid;
+      grid-template-columns: 20px 28px 1fr;
+      align-items: start;
+      column-gap: 8px;
       margin: 8px 0;
       font-size: 0.95rem;
     }
 
+    .option-row input[type="radio"] {
+      width: auto;
+      margin-top: 0.25rem;
+    }
+
     .option-tag {
       font-family: "IBM Plex Mono", monospace;
-      min-width: 16px;
+      min-width: 28px;
       font-weight: 600;
       color: #0b4f68;
     }
