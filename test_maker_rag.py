@@ -5,7 +5,6 @@ import re
 from getpass import getpass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from sentence_transformers import CrossEncoder
 
 import pandas as pd
 from langchain_community.vectorstores import Chroma
@@ -569,6 +568,7 @@ class TestMakerRAG:
         retrieval_k: int = 8,
         api_key: Optional[str] = None,
         rebuild_index: bool = False,
+        enable_reranker: Optional[bool] = None,
     ) -> None:
         self.materials_dir = str(materials_dir)
         self.persist_directory = str(persist_directory)
@@ -585,7 +585,21 @@ class TestMakerRAG:
             api_key=self.api_key,
         )
 
-        self.reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+        if enable_reranker is None:
+            enable_reranker = os.getenv("ENABLE_RERANKER", "0").strip().lower() in {
+                "1",
+                "true",
+                "yes",
+            }
+        self.reranker = None
+        if enable_reranker:
+            try:
+                # Optional reranker. Disabled by default because it can be heavy on free hosts.
+                from sentence_transformers import CrossEncoder
+
+                self.reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+            except Exception as exc:
+                print(f"Reranker disabled due to initialization error: {exc}")
 
         self.vectorstore = self._build_or_load_vectorstore(rebuild_index=rebuild_index)
         self.retriever = self.vectorstore.as_retriever(search_kwargs={"k": retrieval_k})
@@ -631,7 +645,7 @@ class TestMakerRAG:
     
 
     def _rerank_documents(self, query: str, docs: List[Document], top_k: int = 4) -> List[Document]:
-        if not docs:
+        if not docs or self.reranker is None:
             return docs
 
         pairs = [[query, doc.page_content] for doc in docs]
@@ -790,6 +804,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Force re-indexing of all course materials.",
     )
+    parser.add_argument(
+        "--enable-reranker",
+        action="store_true",
+        help="Enable CrossEncoder reranking (higher CPU/RAM usage).",
+    )
     return parser
 
 
@@ -803,6 +822,7 @@ def main() -> None:
         persist_directory=args.persist_directory,
         api_key=api_key,
         rebuild_index=args.rebuild_index,
+        enable_reranker=args.enable_reranker,
     )
 
     if args.test_request:

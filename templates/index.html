@@ -324,6 +324,23 @@
       statusEl.className = "status";
     }
 
+    async function parseApiJson(response) {
+      const bodyText = await response.text();
+      if (!bodyText) {
+        return {
+          error: `Empty server response (HTTP ${response.status}). Check Render logs.`,
+        };
+      }
+      try {
+        return JSON.parse(bodyText);
+      } catch (_error) {
+        const snippet = bodyText.slice(0, 160).replace(/\s+/g, " ");
+        return {
+          error: `Non-JSON server response (HTTP ${response.status}): ${snippet}`,
+        };
+      }
+    }
+
     function normalizeQuestionId(question) {
       return String(question.id);
     }
@@ -452,9 +469,12 @@
           }),
         });
 
-        const data = await response.json();
+        const data = await parseApiJson(response);
         if (!response.ok) {
           throw new Error(data.error || "Unable to generate test.");
+        }
+        if (data.error) {
+          throw new Error(data.error);
         }
 
         state.testId = data.test_id;
@@ -507,9 +527,12 @@
           }),
         });
 
-        const data = await response.json();
+        const data = await parseApiJson(response);
         if (!response.ok) {
           throw new Error(data.error || "Unable to grade test.");
+        }
+        if (data.error) {
+          throw new Error(data.error);
         }
 
         renderResults(data);

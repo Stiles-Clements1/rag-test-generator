@@ -10,4 +10,3 @@ pandas
 pypdf
 openpyxl
 python-dotenv
-sentence-transformers

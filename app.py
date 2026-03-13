@@ -15,6 +15,7 @@ CHROMA_DIR = os.getenv("CHROMA_DIR", "chroma_db")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 DEFAULT_NUM_QUESTIONS = int(os.getenv("DEFAULT_NUM_QUESTIONS", "8"))
 MAX_CACHED_TESTS = int(os.getenv("MAX_CACHED_TESTS", "200"))
+ENABLE_RERANKER = os.getenv("ENABLE_RERANKER", "0").strip().lower() in {"1", "true", "yes"}
 
 RAG_CACHE: Dict[str, TestMakerRAG] = {}
 TEST_CACHE: "OrderedDict[str, dict]" = OrderedDict()
@@ -46,6 +47,7 @@ def _get_rag_engine(api_key: str) -> TestMakerRAG:
                 model_name=OPENAI_MODEL,
                 api_key=key,
                 rebuild_index=False,
+                enable_reranker=ENABLE_RERANKER,
             )
         return RAG_CACHE[cache_key]
 
