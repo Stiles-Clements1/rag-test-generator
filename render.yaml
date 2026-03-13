@@ -10,3 +10,7 @@
         value: gpt-4o-mini
       - key: DEFAULT_NUM_QUESTIONS
         value: "8"
+      - key: ENABLE_RERANKER
+        value: "0"
+      - key: MAX_CACHED_TESTS
+        value: "20"

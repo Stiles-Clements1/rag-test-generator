@@ -16,7 +16,11 @@ COPY . .
 
 ENV MATERIALS_DIR=/app/Materials
 ENV CHROMA_DIR=/app/chroma_db
+ENV GUNICORN_WORKERS=1
+ENV GUNICORN_THREADS=2
+ENV GUNICORN_TIMEOUT=300
+ENV GUNICORN_GRACEFUL_TIMEOUT=300
 
 EXPOSE 10000
 
-CMD ["sh", "-c", "gunicorn -w 1 -k gthread --threads 4 -b 0.0.0.0:${PORT:-10000} app:app"]
+CMD ["sh", "-c", "gunicorn -w ${GUNICORN_WORKERS} -k gthread --threads ${GUNICORN_THREADS} --timeout ${GUNICORN_TIMEOUT} --graceful-timeout ${GUNICORN_GRACEFUL_TIMEOUT} -b 0.0.0.0:${PORT:-10000} app:app"]

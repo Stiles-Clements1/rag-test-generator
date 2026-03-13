@@ -68,6 +68,8 @@ Open `http://localhost:10000`.
 4. Add environment variables:
    - `OPENAI_API_KEY` (recommended for server-side key)
    - optional: `OPENAI_MODEL=gpt-4o-mini`
+   - `ENABLE_RERANKER=0` (recommended on Render free tier)
+   - `MAX_CACHED_TESTS=20`
 5. Deploy.
 6. Verify health check: `/api/health`.
 
@@ -76,3 +78,4 @@ Open `http://localhost:10000`.
 - Generated tests are cached in server memory for grading.
 - Short-answer grading uses an LLM rubric; provide `OPENAI_API_KEY` on server or in the page input.
 - If `Materials/` is not present in deployment, retrieval will fail.
+- If requests time out on first test generation, increase Gunicorn timeout via `GUNICORN_TIMEOUT` and `GUNICORN_GRACEFUL_TIMEOUT` (default in Dockerfile is `300`).
