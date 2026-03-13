@@ -82,6 +82,14 @@ def parse_query_filters(query: str) -> Dict[str, str]:
     return metadata_filter
 
 
+def build_chroma_where(metadata_filter: Dict[str, str]) -> Optional[Dict[str, Any]]:
+    if not metadata_filter:
+        return None
+    if len(metadata_filter) == 1:
+        return dict(metadata_filter)
+    return {"$and": [{key: value} for key, value in metadata_filter.items()]}
+
+
 def _normalize_text(text: str) -> str:
     return re.sub(r"\n{3,}", "\n\n", text).strip()
 
@@ -660,9 +668,10 @@ class TestMakerRAG:
             k = self.retrieval_k
 
         metadata_filter = parse_query_filters(query)
+        where_filter = build_chroma_where(metadata_filter)
 
-        if metadata_filter:
-            docs = self.vectorstore.similarity_search(query, k=max(k, 10), filter=metadata_filter)
+        if where_filter:
+            docs = self.vectorstore.similarity_search(query, k=max(k, 10), filter=where_filter)
         else:
             docs = self.vectorstore.similarity_search(query, k=max(k, 10))
 
